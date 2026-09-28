@@ -12,12 +12,13 @@ import { useUser } from "./pages/context/allusers";
 //pages
 import Home from "./pages/home/index";
 import Login from "./pages/login/index";
+import Register from "./pages/register/index";
 //refs
 import { Container } from "./styles";
 import GlobalStyle from "./styles/global";
 
 function App() {
-    const { userChats, mode, chatRefText, chatRef, multiChatRef } = useUser();
+    const { userChats, mode, chatRefText, chatRef, multiChatRef, isConnected, language } = useUser();
     let [drawAttention, sendMessage, sendAudio, SendWink] = Scripts();
 
     useEffect(() => {
@@ -41,11 +42,27 @@ function App() {
 
     return (
         <Container>
+            {!isConnected && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    backgroundColor: 'rgba(255, 0, 0, 0.8)',
+                    color: 'white',
+                    padding: '10px',
+                    textAlign: 'center',
+                    zIndex: 10000,
+                    fontWeight: 'bold'
+                }}>
+                    {language === "es" ? "⚠️ Conexión perdida. Intentando reconectar..." : "⚠️ Connection lost. Reconnecting..."}
+                </div>
+            )}
             <NotificationOnline />
 
-            {mode === "login" ? (
-                <Login />
-            ) : (
+            {mode === "login" && <Login />}
+            {mode === "register" && <Register />}
+            {mode === "home" && (
                 <>
                     <Home />
 

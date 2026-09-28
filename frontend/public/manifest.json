@@ -1,6 +1,6 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "MiChat",
+  "name": "MiChat - Replica clásica",
   "icons": [
     {
       "src": "favicon.ico",

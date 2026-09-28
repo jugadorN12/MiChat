@@ -6,9 +6,7 @@ import UserProvider from "./pages/context/allusers";
 
 ReactDOM.render(
     <UserProvider>
-        <React.StrictMode>
-            <App />
-        </React.StrictMode>
+        <App />
     </UserProvider>,
     document.getElementById("root")
 );

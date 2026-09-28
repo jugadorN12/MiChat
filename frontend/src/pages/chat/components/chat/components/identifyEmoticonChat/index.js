@@ -2,7 +2,7 @@ import React, { useRef } from "react";
 
 const Scripts = () => {
     const preventEmoticons = ({ texto, setTexto }) => {
-        // const regex = /:\)|:-\)|:\(|:-\(|;\);-\)|:-O|8-|:P|:D|:\||:S|:\$|:@|8o\||\+o\(|\(H\)|\(C\)|\(\?\)/gm;
+        if (!texto) return;
 
         const emoticons = {
             ":)": 1,
@@ -122,6 +122,7 @@ const Scripts = () => {
     };
 
     const eastereggschat = ({ texto, setTexto }) => {
+        if (!texto) return;
         if (texto === "modo pablo") {
             //meu easteregg
             setTexto(`pablo é o best programador ever`);

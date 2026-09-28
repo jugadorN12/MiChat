@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
+import axios from "axios";
+import { config as getConfigs } from "../../configs/config_connections";
 //icons
 import { BsPencil, BsTrash } from "react-icons/bs";
 import ReactLoading from "react-loading";
@@ -42,46 +44,58 @@ const Login = () => {
         socket.emit("change username user", username);
     };
 
-    const onSubmit = (data) => {
+    const configs = getConfigs();
+
+    const onSubmit = async (data) => {
         setGifLogin(true);
         buttonLogin.current.disabled = true;
 
-        sendSocketEmitUsername(data.username); // troca username ao entrar
-        timetologin = setTimeout(() => {
-            if (!data.username || data.username === " " || data.username === "") {
-                alert(language === "br" ? "Você deve colocar o seu nome de usuário." : "You must enter your username.");
-                buttonLogin.current.disabled = false;
-                setGifLogin(false);
-                return false;
-            }
+        try {
+            const response = await axios.post(`${configs.ipServer}/routes/auth/login`, {
+                identifier: data.username,
+                password: data.password
+            });
 
-            sendSocketEmitStatus(data.status); // troca status ao entrar.
+            const user = response.data.user;
 
-            data.socketid = socket.id;
-            if (rememberIsChecked.current) data.remember = rememberIsChecked.current.checked;
-            if (autoLoginIsChecked.current) data.autologin = autoLoginIsChecked.current.checked;
+            if (user) {
+                sendSocketEmitUsername(user.username);
 
-            //se o input estiver selecionado, irá as informações.
-            if (data.remember) {
-                localStorage.setItem("saveUser", JSON.stringify({ username: data.username, avatar: person.avatar, autologin: autoLoginIsChecked.current.checked }));
-            } else {
-                //caso nao esteja ele irá remover.
-                localStorage.removeItem("saveUser");
-            }
+                const userAvatar = user.avatar || person.avatar || "";
+                socket.emit("change avatar", userAvatar);
 
-            if (JSON.parse(localStorage.getItem("saveUser"))) {
-                let avatar = JSON.parse(localStorage.getItem("saveUser")).avatar; // pega o avatar que esta em local storage
-                if (changeStatusBorder !== "invisible") {
-                    socket.emit("socket connected notification", { avatar }); // faz um emit pro serivdor
+                sendSocketEmitStatus(data.status); // troca status ao entrar.
+
+                data.socketid = socket.id;
+                if (rememberIsChecked.current) data.remember = rememberIsChecked.current.checked;
+                if (autoLoginIsChecked.current) data.autologin = autoLoginIsChecked.current.checked;
+
+                //se o input estiver selecionado, irá as informações.
+                if (data.remember) {
+                    localStorage.setItem("saveUser", JSON.stringify({ username: user.username, avatar: userAvatar, autologin: autoLoginIsChecked.current.checked }));
+                } else {
+                    //caso nao esteja ele irá remover.
+                    localStorage.removeItem("saveUser");
                 }
-            } else {
-                if (changeStatusBorder !== "invisible") {
-                    socket.emit("socket connected notification", { avatar: person.avatar }); // faz um emit pro serivdor
-                }
-            }
 
-            setMode("home"); //muda para home depois que clica.
-        }, 3500);
+                if (JSON.parse(localStorage.getItem("saveUser"))) {
+                    let avatar = JSON.parse(localStorage.getItem("saveUser")).avatar; // pega o avatar que esta em local storage
+                    if (changeStatusBorder !== "invisible") {
+                        socket.emit("socket connected notification", { avatar }); // faz um emit pro serivdor
+                    }
+                } else {
+                    if (changeStatusBorder !== "invisible") {
+                        socket.emit("socket connected notification", { avatar: person.avatar }); // faz um emit pro serivdor
+                    }
+                }
+
+                setMode("home"); //muda para home depois que clica.
+            }
+        } catch (error) {
+            alert(error.response?.data?.error || (language === "es" ? "Error al iniciar sesión" : "Login error"));
+            buttonLogin.current.disabled = false;
+            setGifLogin(false);
+        }
     };
 
     const handleCancelLogin = () => {
@@ -111,7 +125,7 @@ const Login = () => {
         rememberIsChecked.current.checked = false;
         autoLoginIsChecked.current.checked = false;
         socket.emit("change avatar", "");
-        alert(language === "br" ? "Informações limpas" : "Information deleted.");
+        alert(language === "es" ? "Información eliminada." : "Information deleted.");
     };
 
     (async function () {
@@ -131,10 +145,10 @@ const Login = () => {
                 buttonLogin.current.click();
             }
         }
-        if (localStorage.getItem("msn-language")) {
-            changeLanguage(localStorage.getItem("msn-language"));
+        if (localStorage.getItem("michat-language")) {
+            changeLanguage(localStorage.getItem("michat-language"));
         }
-    }, person);
+    }, [person]);
 
     return (
         <Main>
@@ -152,53 +166,61 @@ const Login = () => {
 
                 <form onSubmit={handleSubmit(onSubmit)}>
                     <div className="div-input-login">
-                        <p>{language === "br" ? "Nome de usuario:" : "Username:"}</p>
+                        <p>{language === "es" ? "Nombre de usuario, email o celular:" : "Username, Email or Phone:"}</p>
                         <input id="login-input-email" ref={register} name="username" type="text" value={username} onChange={handleChangeUsername} />
                     </div>
 
+                    <div className="div-input-login" style={{ marginTop: '-10px' }}>
+                        <p>{language === "es" ? "Contraseña:" : "Password:"}</p>
+                        <input id="login-input-password" ref={register} name="password" type="password" style={{ height: '30px', fontSize: '16px', paddingLeft: '5px' }} />
+                    </div>
+
                     <div id="login-status">
-                        <p>{language === "br" ? "Entrar como:" : "Sign in as:"}</p>
+                        <p>{language === "es" ? "Iniciar sesión como:" : "Sign in as:"}</p>
                         <select ref={register} name="status" onChange={(e) => setChangeStatusBorder(e.target.value)}>
-                            <option value="online">{language === "br" ? "Online (Padrão)" : "Online (Default)"}</option>
-                            <option value="busy">{language === "br" ? "Ocupado" : "Busy"}</option>
-                            <option value="away">{language === "br" ? "Ausente" : "Away"}</option>
+                            <option value="online">{language === "es" ? "Conectado (Predeterminado)" : "Online (Default)"}</option>
+                            <option value="busy">{language === "es" ? "Ocupado" : "Busy"}</option>
+                            <option value="away">{language === "es" ? "Ausente" : "Away"}</option>
                             <option value="invisible">Offline</option>
                         </select>
                     </div>
                     <div className="checkbox-buttons-login">
                         <input type="checkbox" ref={rememberIsChecked} onChange={handleVerifyRememberInput}></input>
-                        <p>{language === "br" ? "Lembrar-me" : "Remember-me"}</p>
+                        <p>{language === "es" ? "Recordarme" : "Remember-me"}</p>
                         <button type="button" onClick={clearSaveUser}>
                             <BsTrash />
                         </button>
                     </div>
                     <div className="checkbox-buttons-login">
                         <input disabled type="checkbox" ref={autoLoginIsChecked}></input>
-                        <p>{language === "br" ? "Entrar Automaticamente" : "Sign me in automatically"}</p>
+                        <p>{language === "es" ? "Iniciar sesión automáticamente" : "Sign me in automatically"}</p>
                     </div>
                     <div id="footer-buttons">
                         {person ? (
                             <button ref={buttonLogin} type="submit">
-                                {language === "br" ? "Entrar" : "Sign in"}
+                                {language === "es" ? "Entrar" : "Sign in"}
                             </button>
                         ) : (
                             <button
                                 type="button"
                                 ref={buttonLogin}
                                 onClick={() => {
-                                    alert(language === "br" ? "Não foi possivel conectar ao servidor, tente novamente!" : "Unable to connect to the server, try again!");
+                                    alert(language === "es" ? "No se pudo conectar al servidor, ¡intentá de nuevo!" : "Unable to connect to the server, try again!");
                                 }}
                             >
-                                {language === "br" ? "Entrar" : "Sign in"}
+                                {language === "es" ? "Entrar" : "Sign in"}
                             </button>
                         )}
                     </div>
+                    <p onClick={() => setMode("register")} style={{ cursor: 'pointer', marginTop: '20px', textDecoration: 'underline', textAlign: 'center' }}>
+                        {language === "es" ? "¿No tenés cuenta? Registrate acá" : "No account? Register here"}
+                    </p>
                 </form>
                 {gifLogin && (
                     <div id="div-gif-singin">
-                        <small>{language === "br" ? "Entrando..." : "Signing in..."}</small>
+                        <small>{language === "es" ? "Iniciando sesión..." : "Signing in..."}</small>
                         <img src={loading} alt="gif-singin" />
-                        <p onClick={handleCancelLogin}>{language === "br" ? "Cancelar" : "Cancel"}</p>
+                        <p onClick={handleCancelLogin}>{language === "es" ? "Cancelar" : "Cancel"}</p>
                     </div>
                 )}
             </Container>

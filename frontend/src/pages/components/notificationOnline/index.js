@@ -11,7 +11,7 @@ import ModalBorder from "../../components/modalBorder/index";
 //context
 import { useUser } from "../../context/allusers";
 //images
-import msnLogo from "./assets/msn-logo.png";
+import chatLogo from "./assets/logo-placeholder.png";
 import { Container } from "./styles";
 
 const NotificationOnline = () => {
@@ -21,7 +21,7 @@ const NotificationOnline = () => {
 
     const { language } = useUser();
 
-    const stylemsn = {
+    const styleMichat = {
         Containers: {
             DefaultStyle: {
                 fontFamily: "inherit",
@@ -88,16 +88,16 @@ const NotificationOnline = () => {
             children: (
                 <Container>
                     <div id="header">
-                        <img src={msnLogo} alt="msn logo" />
-                        <p>Windows Live MessengerJS</p>
+                        <img src={chatLogo} alt="logo" />
+                        <p>MiChat</p>
                         <AiOutlineClose />
                     </div>
                     <div id="body">
                         {person ? <ModalBorder avatar={person.avatar} size="32" minus="12" left="4px" top="4px" /> : <ModalBorder avatar="" size="32" minus="12" left="4px" top="4px" />}
 
                         <div id="body-username">
-                            <p>{person ? person.username : language === "br" ? "Alguém" : "Somebody"}</p>
-                            <p>{language === "br" ? "acabou de entrar." : "has just signed in."}</p>
+                            <p>{person ? person.username : language === "es" ? "Alguien" : "Somebody"}</p>
+                            <p>{language === "es" ? "acaba de entrar." : "has just signed in."}</p>
                         </div>
                     </div>
                 </Container>
@@ -118,7 +118,7 @@ const NotificationOnline = () => {
 
     return (
         <>
-            <NotificationSystem ref={notificationSystem} style={stylemsn} />
+            <NotificationSystem ref={notificationSystem} style={styleMichat} />
             <button id="button-add-notification" onClick={addNotification} style={{ position: "absolute", zIndex: "-3" }} ref={ButtonnotificationSystem} />
         </>
     );

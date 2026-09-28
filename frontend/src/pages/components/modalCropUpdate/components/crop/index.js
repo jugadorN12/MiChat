@@ -8,6 +8,9 @@ import { Container, Button, SelectFile } from "./styles";
 //socket
 import { socket } from "../../../../../configs/socket_export";
 
+//configs
+import { config } from "../../../../../configs/config_connections";
+
 //context
 import { useUser } from "../../../../context/allusers";
 
@@ -24,39 +27,51 @@ export default function App(props) {
         if (!file || !file.type.match(/image.*/)) return;
 
         /* Lets build a FormData object*/
-        const fd = new FormData(); // I wrote about it: https://hacks.mozilla.org/2011/01/how-to-develop-a-html5-image-uploader/
+        const fd = new FormData();
         fd.append("image", file); // Append the file
-        var xhr = new XMLHttpRequest(); // Create the XHR (Cross-Domain XHR FTW!!!) Thank you sooooo much imgur.com
-        xhr.open("POST", "https://api.imgur.com/3/image.json"); // Boooom!
+
+        const configs = config();
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", `${configs.ipServer}/routes/upload`);
         xhr.onload = function () {
-            // Big win!
-            socket.emit("change avatar", JSON.parse(xhr.responseText).data.link);
+            if (xhr.status === 200) {
+                // Big win!
+                const newAvatarLink = JSON.parse(xhr.responseText).link;
+                console.log("Avatar subido al servidor local:", newAvatarLink);
+                socket.emit("change avatar", newAvatarLink);
 
-            let history = [];
-
-            if (JSON.parse(localStorage.getItem("photosHistory"))) {
-                //verifica se a pessoa ja upou alguma foto na vida
-                if (JSON.parse(localStorage.getItem("photosHistory")).length > 10) {
-                    //caso a pessoa ja tenha 7 fotos no historico, ele vai removendo e adicionando a nova
-                    history = JSON.parse(localStorage.getItem("photosHistory"));
-                    history.shift();
-                } else {
-                    history = JSON.parse(localStorage.getItem("photosHistory"));
+                // Actualizar localStorage para que persista en el login
+                if (localStorage.getItem("saveUser")) {
+                    let saveUser = JSON.parse(localStorage.getItem("saveUser"));
+                    saveUser.avatar = newAvatarLink;
+                    localStorage.setItem("saveUser", JSON.stringify(saveUser));
                 }
 
-                localStorage.setItem("photosHistory", JSON.stringify([...history, JSON.parse(xhr.responseText).data.link]));
+                let history = [];
+
+                if (JSON.parse(localStorage.getItem("photosHistory"))) {
+                    //verifica se a pessoa ja upou alguma foto na vida
+                    if (JSON.parse(localStorage.getItem("photosHistory")).length > 10) {
+                        //caso a pessoa ja tenha 7 fotos no historico, ele vai removendo e adicionando a nova
+                        history = JSON.parse(localStorage.getItem("photosHistory"));
+                        history.shift();
+                    } else {
+                        history = JSON.parse(localStorage.getItem("photosHistory"));
+                    }
+
+                    localStorage.setItem("photosHistory", JSON.stringify([...history, newAvatarLink]));
+                } else {
+                    //se nunca colocou uma foto, ele ira cair aqui para baixo.
+                    localStorage.setItem("photosHistory", JSON.stringify([newAvatarLink]));
+                }
             } else {
-                //se nunca colocou uma foto, ele ira cair aqui para baixo.
-                localStorage.setItem("photosHistory", JSON.stringify([JSON.parse(xhr.responseText).data.link]));
+                alert("Error al subir imagen al servidor. Status: " + xhr.status + " - " + xhr.statusText);
+                console.error("Upload Error:", xhr.responseText);
             }
         };
         xhr.onerror = function (e) {
-            alert("Error Status: " + e.target.status);
+            alert("Error de conexión al subir imagen.");
         };
-
-        xhr.setRequestHeader("Authorization", "Client-ID 28aaa2e823b03b1"); // Get your own key http://api.imgur.com/
-
-        // Ok, I don't handle the errors. An exercise for the reader.
 
         /* And now, we send the formdata */
         xhr.send(fd);
@@ -120,7 +135,7 @@ export default function App(props) {
 
     return (
         <Container>
-            <h3>{language === "br" ? "Selecione um arquivo abaixo para fazer o recorte e salvar." : "Select a image below to cut and save."}</h3>
+            <h3>{language === "es" ? "Seleccioná un archivo abajo para recortar y guardar." : "Select a image below to cut and save."}</h3>
             <div id="button-select-photo">
                 <SelectFile type="file" accept="image/*" onChange={onSelectFile} />
             </div>
@@ -150,7 +165,7 @@ export default function App(props) {
                     props.close();
                 }}
             >
-                {language === "br" ? "Salvar" : "Save"}
+                {language === "es" ? "Guardar" : "Save"}
             </Button>
         </Container>
     );

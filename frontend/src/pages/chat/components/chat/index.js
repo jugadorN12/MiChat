@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 
 import ContentEditable from "react-contenteditable";
 //configs
@@ -7,8 +7,6 @@ import { socket } from "../../../../configs/socket_export";
 import AeroButton from "../../../components/aeroButton/index";
 import emotions from "./assets/emoticon.png";
 import Audio from "../../../components/audioRecorder/index";
-import SendWinks from "./components/sendWinks";
-import SendEmoticon from "./components/sendEmoticons";
 import preventChat from "./components/identifyEmoticonChat/index";
 
 //images
@@ -21,8 +19,9 @@ import { Container, HeaderChat, MultiPoints, Sender, DivRecordVoice } from "./st
 //context
 import { useUser } from "../../../context/allusers";
 
-//winks
-import Winks from "./components/sendWinks/components/winks/index";
+const SendWinks = React.lazy(() => import("./components/sendWinks"));
+const SendEmoticon = React.lazy(() => import("./components/sendEmoticons"));
+const Winks = React.lazy(() => import("./components/sendWinks/components/winks/index"));
 
 const Chat = (props) => {
     const { language } = useUser();
@@ -30,8 +29,8 @@ const Chat = (props) => {
     const [visibleSendWinks, setVisibleSendWinks] = useState(false);
     const [visibleSendEmoticons, setVisibleSendEmoticon] = useState(false);
     const DivRecordVoiceRef = useRef(null);
-    const refContentEditable = useRef(""); // referencia do textArea de digitar
-    const [texto, setTexto] = useState(""); // state que coleta o que esta sendo escrito
+    const refContentEditable = useRef(null); // referencia do textArea de digitar
+    const [texto, setTexto] = useState(""); // Estado que colecta lo que se está escribiendo
     let [preventEmoticons, eastereggschat] = preventChat(); //essas funções verificam o que esta sendo escrito no chat antes de enviar, e faz alguma ação se o que esta sendo escrito for algo especifico.
 
     const handleClickDrawAttention = () => {
@@ -40,27 +39,47 @@ const Chat = (props) => {
     };
 
     useEffect(() => {
-        preventEmoticons({ texto: refContentEditable.current.lastHtml, setTexto });
-        eastereggschat({ texto: refContentEditable.current.lastHtml, setTexto });
-    }, [refContentEditable.current.lastHtml]);
+        const lastChar = texto.slice(-1);
+        // Only run if the last character is a potential emoticon trigger or space
+        if (texto && (lastChar === ')' || lastChar === ' ' || lastChar === '>')) {
+            preventEmoticons({ texto, setTexto });
+            eastereggschat({ texto, setTexto });
+        }
+    }, [texto]);
 
-    const handleSend = (e) => {
-        if (!refContentEditable.current.lastHtml || refContentEditable.current.lastHtml === "" || refContentEditable.current.lastHtml === " " || refContentEditable.current.lastHtml === "") return false;
+    const handleSend = () => {
+        // Obtenemos el texto actual directamente del DOM para máxima precisión
+        const domElement = document.getElementById("text-area");
+        const currentText = domElement ? domElement.innerHTML : texto;
+
+        console.log("DEBUG - Texto a enviar:", currentText);
+
+        if (!currentText || currentText.trim() === "" || currentText === "<br>") {
+            console.log("DEBUG - Abortando: Mensaje vacío.");
+            return false;
+        }
 
         if (props.socketidUser && props.socketidPerson) {
-            const socketidUser = props.socketidUser;
-            const socketidPerson = props.socketidPerson;
-
-            socket.emit("send server message text", { message: refContentEditable.current.lastHtml, socketidUser, socketidPerson });
-            setTexto("");
+            socket.emit("send server message text", {
+                message: currentText,
+                socketidUser: props.socketidUser,
+                socketidPerson: props.socketidPerson
+            });
+            console.log("DEBUG - Mensaje enviado al socket.");
+            setTexto(""); // Limpiamos el estado
+            if (domElement) domElement.innerHTML = ""; // Limpiamos el DOM manualmente por seguridad
+        } else {
+            console.error("DEBUG - Error: IDs de socket no encontrados.");
         }
     };
 
     const onPressEnter = (e) => {
-        //Essa função serve para quando a pessoa quiser mandar por enter... caso ela clique no botão de enviar ela nem passa por aqui.
-        if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            handleSend();
+        if (e.keyCode === 13 || e.key === "Enter") {
+            if (!e.shiftKey) {
+                e.preventDefault();
+                console.log("DEBUG - Enter presionado");
+                handleSend();
+            }
         }
     };
 
@@ -69,16 +88,22 @@ const Chat = (props) => {
             <MultiPoints>
                 <img src={points} alt="icon-points" />
             </MultiPoints>
-            <Winks socketidPerson={props.socketidPerson}></Winks>
+            <Suspense fallback={null}>
+                <Winks socketidPerson={props.socketidPerson}></Winks>
+            </Suspense>
 
             <HeaderChat>
                 <AeroButton onCustomClick={() => (visibleSendEmoticons ? setVisibleSendEmoticon(false) : setVisibleSendEmoticon(true))}>
                     <img src={emotions} alt="icon-emotions" />
-                    <SendEmoticon socketidPerson={props.socketidPerson} visible={visibleSendEmoticons} ref={refContentEditable} setTexto={setTexto} texto={texto} />
+                    <Suspense fallback={null}>
+                        <SendEmoticon socketidPerson={props.socketidPerson} visible={visibleSendEmoticons} ref={refContentEditable} setTexto={setTexto} texto={texto} />
+                    </Suspense>
                 </AeroButton>
                 <AeroButton onCustomClick={() => (visibleSendWinks ? setVisibleSendWinks(false) : setVisibleSendWinks(true))}>
                     <img src={winks} alt="icon-winks" />
-                    <SendWinks socketidPerson={props.socketidPerson} visible={visibleSendWinks} />
+                    <Suspense fallback={null}>
+                        <SendWinks socketidPerson={props.socketidPerson} visible={visibleSendWinks} />
+                    </Suspense>
                 </AeroButton>
                 <AeroButton onCustomClick={handleClickDrawAttention}>
                     <img src={tilt} alt="icon-tilt" />
@@ -95,7 +120,7 @@ const Chat = (props) => {
                 <ContentEditable id="text-area" html={texto} onChange={(e) => setTexto(e.target.value)} onKeyDown={onPressEnter} ref={refContentEditable} />
             </Container>
             <Sender>
-                <button onClick={handleSend}>{language === "br" ? "Enviar" : "Send"}</button>
+                <button onClick={handleSend}>{language === "es" ? "Enviar" : "Send"}</button>
             </Sender>
         </>
     );

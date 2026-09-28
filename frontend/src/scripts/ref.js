@@ -11,7 +11,7 @@ let timeoutwinks = false; //Time out para o limite de chamar atenção
 const Scripts = () => {
     const sendMessage = ({ chatRefText, multiChatRef, chatRef, message, socketidUser, socketidPerson, chatopen, usernamesend }) => {
         if (!chatRefText.current) return false;
-        if (!socketidUser) return alert("Houve um erro ao enviar sua mensaem.");
+        if (!socketidUser) return alert("Hubo un error al enviar tu mensaje.");
 
         if (!chatRefText.current) return false;
         const indexPersonChat = chatRefText.current.findIndex((elem) => {
@@ -28,12 +28,12 @@ const Scripts = () => {
 
         if (chatRefText.current[indexPersonChat]) {
             //esse é o que aparece para quem manda
-            chatRefText.current[indexPersonChat].insertAdjacentHTML("beforeend", `<p id="chat-usarname" style="color: darkgray; font-size: 14px;"  >${usernamesend} diz:</p><p id="chat-textmessage"style="margin-left: 10px; margin-bottom: 5px;">${message}</p>`);
+            chatRefText.current[indexPersonChat].insertAdjacentHTML("beforeend", `<p id="chat-usarname" style="color: darkgray; font-size: 14px;"  >${usernamesend} dice:</p><p id="chat-textmessage"style="margin-left: 10px; margin-bottom: 5px;">${message}</p>`);
             chatRefText.current[indexPersonChat].scrollTop = chatRefText.current[indexPersonChat].scrollHeight; //move o scroll para baixo
         }
         if (chatRefText.current[indexUserChat]) {
             // esse é o que aparece para quem recebe
-            chatRefText.current[indexUserChat].insertAdjacentHTML("beforeend", `<p id="chat-usarname" style="color: black; font-size: 14px;">${usernamesend} diz:</p><p id="chat-textmessage" style="margin-left: 10px; margin-bottom: 5px;">${message}</p>`);
+            chatRefText.current[indexUserChat].insertAdjacentHTML("beforeend", `<p id="chat-usarname" style="color: black; font-size: 14px;">${usernamesend} dice:</p><p id="chat-textmessage" style="margin-left: 10px; margin-bottom: 5px;">${message}</p>`);
             chatRefText.current[indexUserChat].scrollTop = chatRefText.current[indexUserChat].scrollHeight; //move o scroll para baixo
         }
 
@@ -87,18 +87,21 @@ const Scripts = () => {
             }, 5000);
 
             if (chatRefText.current[indexUserChat]) {
-                //esse é o que aparece para quem manda
-                chatRefText.current[indexUserChat].insertAdjacentHTML("beforeend", `<p id="chat-usarname" style="color: black; font-size: 14px;">${usernamesend} envia um wink:</p>`);
+                const isEs = localStorage.getItem("michat-language") === "es";
+                const winkMsg = isEs ? `${usernamesend} envió un guiño:` : `${usernamesend} sent a wink:`;
+                const playMsg = isEs ? `Reproducir "${wink}"` : `Play "${wink}"`;
+
+                chatRefText.current[indexUserChat].insertAdjacentHTML("beforeend", `<p id="chat-usarname" style="color: black; font-size: 14px;">${winkMsg}</p>`);
 
                 chatRefText.current[indexUserChat].insertAdjacentHTML("beforeend", `<img src=${require(`../pages/chat/components/chat/components/sendWinks/assets/${wink}.png`).default} onclick={document.getElementById('play-wink-${wink}-${socketidUser}').click()} style="margin-left: 15px; cursor: pointer; text-decoration: underline; width: 70px; "/>`);
-                chatRefText.current[indexUserChat].insertAdjacentHTML("beforeend", `<p id="chat-usarname" onclick={document.getElementById('play-wink-${wink}-${socketidUser}').click()} style="color: #075af5; font-size: 18px; margin-left: 15px; cursor: pointer; text-decoration: underline">Reproduzir "${wink}"</p>`);
+                chatRefText.current[indexUserChat].insertAdjacentHTML("beforeend", `<p id="chat-usarname" onclick={document.getElementById('play-wink-${wink}-${socketidUser}').click()} style="color: #075af5; font-size: 18px; margin-left: 15px; cursor: pointer; text-decoration: underline">${playMsg}</p>`);
             }
 
             playsound("type");
             if (document.getElementById(`play-wink-${wink}-${socketidUser}`)) document.getElementById(`play-wink-${wink}-${socketidUser}`).click();
         } else {
-            if (localStorage.getItem("msn-language") === "br") {
-                if (chatRefText.current[indexUserChat]) chatRefText.current[indexUserChat].insertAdjacentHTML("beforeend", `<p id='attention'>Você não pode enviar winks com tanta freqüência.</p>`);
+            if (localStorage.getItem("michat-language") === "es") {
+                if (chatRefText.current[indexUserChat]) chatRefText.current[indexUserChat].insertAdjacentHTML("beforeend", `<p id='attention'>No podés enviar winks con tanta frecuencia.</p>`);
             } else {
                 if (chatRefText.current[indexUserChat]) chatRefText.current[indexUserChat].insertAdjacentHTML("beforeend", `<p id='attention'>You cannot send winks as often.</p>`);
             }
@@ -125,8 +128,8 @@ const Scripts = () => {
                 if (multiChatRef.current[indexPersonMultiChat]) multiChatRef.current[indexPersonMultiChat].style = "background-color: tomato;animation: shake 0.5s;";
                 if (chatRef.current[indexPersonChat]) chatRef.current[indexPersonChat].style = `animation: shake 0.5s; width: ${styles.width}; height: ${styles.height};`;
             }
-            if (localStorage.getItem("msn-language") === "br") {
-                if (chatRefText.current[indexUserChat]) chatRefText.current[indexUserChat].insertAdjacentHTML("beforeend", `<p>—————————</p><p id="chat-usarname">${whosend} acabou de chamar a atenção!</p><p>—————————</p>`);
+            if (localStorage.getItem("michat-language") === "es") {
+                if (chatRefText.current[indexUserChat]) chatRefText.current[indexUserChat].insertAdjacentHTML("beforeend", `<p>—————————</p><p id="chat-usarname">${whosend} ¡acaba de llamar la atención!</p><p>—————————</p>`);
             } else {
                 if (chatRefText.current[indexUserChat]) chatRefText.current[indexUserChat].insertAdjacentHTML("beforeend", `<p>—————————</p><p id="chat-usarname">${whosend} have just sent a Nudge!</p><p>—————————</p>`);
             }
@@ -141,8 +144,8 @@ const Scripts = () => {
             inputDOMNode.parentNode.appendChild(inputDOMNode); // faz puxar para frente ao chamar atenção
         } else {
             if (!isend) return false; // so manda a mensagem abaixo só para pessoa que esta clicando mais de uma vez.
-            if (localStorage.getItem("msn-language") === "br") {
-                if (chatRefText.current[indexUserChat]) chatRefText.current[indexUserChat].insertAdjacentHTML("beforeend", `<p id='attention'>Você não pode pedir a atenção de alguém com tanta freqüência.</p>`);
+            if (localStorage.getItem("michat-language") === "es") {
+                if (chatRefText.current[indexUserChat]) chatRefText.current[indexUserChat].insertAdjacentHTML("beforeend", `<p id='attention'>No podés pedir la atención de alguien con tanta frecuencia.</p>`);
             } else {
                 if (chatRefText.current[indexUserChat]) chatRefText.current[indexUserChat].insertAdjacentHTML("beforeend", `<p id='attention'>You can't get someone's attention often.</p>`);
             }

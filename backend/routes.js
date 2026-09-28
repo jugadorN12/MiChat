@@ -1,135 +1,139 @@
 const express = require("express");
 const router = express.Router();
-const request = require("request"); // "Request" library
-const querystring = require("querystring");
+const bcrypt = require("bcryptjs");
+const db = require("./database");
+const nodemailer = require("nodemailer");
+const multer = require("multer");
+const path = require("path");
 const config = require("./configs/configs")();
 
-const { socketAddMusic, socketsConnected } = require("./models");
-const { setInterval } = require("timers");
+const { socketsConnected } = require("./models");
 
-const client_id = config.client_id; // Your client id
-const client_secret = config.client_secret; // Your secret
-const redirect_uri = config.redirect_uri; // Your redirect uri
-
-/**
- * Generates a random string containing numbers and letters
- * @param  {number} length The length of the string
- * @return {string} The generated string
- */
-var generateRandomString = function (length) {
-    var text = "";
-    var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-
-    for (var i = 0; i < length; i++) {
-        text += possible.charAt(Math.floor(Math.random() * possible.length));
+// Configurar almacenamiento para avatars
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/');
+    },
+    filename: (req, file, cb) => {
+        cb(null, `${Date.now()}-${file.originalname}`);
     }
-    return text;
-};
+});
+const upload = multer({ storage });
 
-var stateKey = "spotify_auth_state";
-let socketid;
-let repeat;
+// Configurar transportador de email
+const transporter = nodemailer.createTransport({
+    service: config.email.service || 'gmail',
+    auth: {
+        user: config.email.user,
+        pass: config.email.pass
+    }
+});
 
 var returnRouter = function (io) {
-    router.get("/spotify/status", async (req, res) => {
+
+    // Status del servidor
+    router.get("/status", async (req, res) => {
         res.json({
             server: "ok",
-            socketsConnected,
+            socketsConnectedCount: socketsConnected.length,
         });
     });
 
-    router.get("/spotify/login", async (req, res) => {
-        var state = generateRandomString(16);
-        res.cookie(stateKey, state);
-
-        // your application requests authorization
-        var scope = "user-read-currently-playing";
-
-        socketid = req.query.socketid;
-        console.log("chegou no login");
-
-        res.redirect(
-            "https://accounts.spotify.com/authorize?" +
-                querystring.stringify({
-                    response_type: "code",
-                    client_id: client_id,
-                    scope: scope,
-                    redirect_uri: redirect_uri,
-                    state: state,
-                })
-        );
+    // Subida de imagen
+    router.post("/upload", upload.single('image'), (req, res) => {
+        if (!req.file) {
+            return res.status(400).json({ error: "No se subió ningún archivo." });
+        }
+        const fileUrl = `${config.ipServer}/uploads/${req.file.filename}`;
+        res.json({ link: fileUrl });
     });
 
-    router.get("/spotify/callback", async (req, res) => {
-        // your application requests refresh and access tokens
-        // after checking the state parameter
+    // Registro de usuario
+    router.post("/auth/register", async (req, res) => {
+        const { username, password, email, phone } = req.body;
 
-        var code = req.query.code || null;
-        var state = req.query.state || null;
-        var storedState = req.cookies ? req.cookies[stateKey] : null;
+        if (!username || !password || (!email && !phone)) {
+            return res.status(400).json({ error: "Faltan campos obligatorios." });
+        }
 
-        res.clearCookie(stateKey);
-        var authOptions = {
-            url: "https://accounts.spotify.com/api/token",
-            form: {
-                code: code,
-                redirect_uri: redirect_uri,
-                grant_type: "authorization_code",
-            },
-            headers: {
-                Authorization: "Basic " + new Buffer(client_id + ":" + client_secret).toString("base64"),
-            },
-            json: true,
+        const userExists = db.get('users').find({ username }).value();
+        if (userExists) {
+            return res.status(400).json({ error: "El nombre de usuario ya existe." });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const newUser = {
+            username,
+            password: hashedPassword,
+            email,
+            phone,
+            verified: true, // AUTO-VERIFICADO PARA FASE 1 (Evitar fricción en pruebas)
+            createdAt: new Date().toISOString()
         };
 
-        request.post(authOptions, function (error, response, body) {
-            if (!error && response.statusCode === 200) {
-                var access_token = body.access_token,
-                    refresh_token = body.refresh_token;
+        db.get('users').push(newUser).write();
 
-                var options = {
-                    url: "https://api.spotify.com/v1/me/player/currently-playing?market=ES&additional_types=episode",
-                    headers: { Authorization: "Bearer " + access_token },
-                    json: true,
+        // TODO: integrar verificación SMS cuando haya presupuesto
+        if (email) {
+            console.log(`Enviando email de verificación a ${email}...`);
+            // Lógica de envío real (comentada si no hay config)
+            if (config.email.user && config.email.pass) {
+                const mailOptions = {
+                    from: config.email.user,
+                    to: email,
+                    subject: 'Verificá tu cuenta de MiChat',
+                    text: `¡Hola ${username}! Hacé click acá para verificar tu cuenta: ${config.ipServer}/routes/auth/verify?username=${username}`
                 };
-
-                //use the access token to access the Spotify Web API
-
-                //clearInterval(repeat); //Limpa o repeat, basicamente limpa o ultimo interval feito, para que não fique alternando as musicas.
-
-                // repeat = setInterval(() => {
-                //Faz um interval para que quando a pessoa libere 1x, ele fique atualizando as musicas.
-                console.log("chegou no callback");
-
-                request.get(options, async function (error, response, body) {
-                    if (body.item.name) {
-                        socketAddMusic({ socketid, name: body.item.name, author: body.item.artists[0].name, url: body.item.external_urls.spotify });
-                        io.emit("socketsConnected", socketsConnected);
-
-                        res.send(`<div>
-                                <h6 id='music'>Você está ouvindo: ${body.item.name}</h6>
-                                <h6>De: ${body.item.artists[0].name}</h6>
-                                <a href='${body.item.external_urls.spotify}' target="_blank" >Link: ${body.item.external_urls.spotify}</a>
-                                <a>${access_token}</a>
-                                <script>window.close()</script>
-
-                            </div>`);
-                    } else {
-                        res.send(`<div style=''>
-                                <h6 id='music'>No momento não está tocando musica no seu spotify.</h6>
-                            </div>`);
-                    }
+                transporter.sendMail(mailOptions, (error, info) => {
+                    if (error) console.log("Error enviando email:", error);
                 });
-                // }, 5000);
             } else {
-                res.redirect(
-                    "/#" +
-                        querystring.stringify({
-                            error: "invalid_token",
-                        })
-                );
+                console.log("Simulación: Link de verificación -> ", `${config.ipServer}/routes/auth/verify?username=${username}`);
             }
-        });
+        }
+
+        res.json({ message: "Usuario registrado con éxito. Verificá tu email si corresponde." });
+    });
+
+    // Login de usuario
+    router.post("/auth/login", async (req, res) => {
+        const { identifier, password } = req.body; // identifier puede ser username, email o phone
+
+        const user = db.get('users').find(u =>
+            u.username === identifier ||
+            u.email === identifier ||
+            u.phone === identifier
+        ).value();
+
+        if (!user) {
+            return res.status(400).json({ error: "Usuario no encontrado." });
+        }
+
+        if (!user.verified) {
+            return res.status(400).json({ error: "Cuenta no verificada. Por favor revisá tu consola o email para el link de activación." });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ error: "Contraseña incorrecta." });
+        }
+
+        // En un sistema real usaríamos JWT aquí. Por ahora devolvemos el perfil.
+        const { password: _, ...userProfile } = user;
+        res.json({ message: "Login exitoso", user: userProfile });
+    });
+
+    // Verificación de cuenta
+    router.get("/auth/verify", (req, res) => {
+        const { username } = req.query;
+        const user = db.get('users').find({ username }).value();
+
+        if (user) {
+            db.get('users').find({ username }).assign({ verified: true }).write();
+            res.send("<h1>Cuenta verificada con éxito. ¡Ya podés iniciar sesión!</h1>");
+        } else {
+            res.status(400).send("Usuario no encontrado.");
+        }
     });
 
     return router;

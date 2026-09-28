@@ -17,7 +17,7 @@ const Home = React.forwardRef((props, ref) => {
     const preventf5 = (e) => {
         if (e.keyCode == 116) {
             e.preventDefault();
-            language === "br" ? alert("Não é possivel atualizar essa pagina pelo teclado.") : alert("It is not possible to update this page from the keyboard.");
+            language === "es" ? alert("No se puede actualizar esta página por teclado.") : alert("It is not possible to update this page from the keyboard.");
         }
     };
 

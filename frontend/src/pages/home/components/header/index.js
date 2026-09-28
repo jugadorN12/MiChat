@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 //icons
 import { BsMusicNoteBeamed, BsPencil } from "react-icons/bs";
-import { FaSpotify } from "react-icons/fa";
 import { ImExit } from "react-icons/im";
 //tooltip
 import ReactTooltip from "react-tooltip";
@@ -77,10 +76,6 @@ const Header = () => {
         })();
     });
 
-    const menuSubnick = async () => {
-        window.open(`http://${configs.ipServer}/routes/spotify/login?socketid=${socket.id}`, "_blank", "location=yes,height=570,width=520,scrollbars=yes,status=yes");
-    };
-
     return (
         <>
             <ReactTooltip multiline={true} />
@@ -106,14 +101,14 @@ const Header = () => {
                                 <small>
                                     <select onChange={(e) => handleChangeStatus(e)} ref={selectstatus}>
                                         <option value="online">(Online)</option>
-                                        <option value="busy">{language === "br" ? "(Ocupado)" : "(Busy)"}</option>
-                                        <option value="away">{language === "br" ? "(Ausente)" : "(Away)"}</option>
+                                        <option value="busy">{language === "es" ? "(Ocupado)" : "(Busy)"}</option>
+                                        <option value="away">{language === "es" ? "(Ausente)" : "(Away)"}</option>
                                         <option value="invisible">(Offline)</option>
                                     </select>
                                 </small>
                             </div>
                             <div>
-                                <img onClick={() => changeLanguage("br")} className="country-flag" src={brasil} alt="" />
+                                <img onClick={() => changeLanguage("es")} className="country-flag" src={brasil} alt="" />
                                 <img onClick={() => changeLanguage("en")} className="country-flag" src={usa} alt="" />
                                 <div style={{ marginLeft: 30, cursor: "pointer" }}>
                                     <ImExit onClick={logout} size={30} />
@@ -122,16 +117,9 @@ const Header = () => {
                         </span>
 
                         <div id="div-subnick">
-                            <AeroButton datatip={language === "br" ? "Clique para inserir a musica<br /> que está ouvindo agora no spotify." : "Click to insert the song <br /> you are listening to now on spotify."} onCustomClick={() => menuSubnick()}>
-                                <FaSpotify size="20" color="white" />
-                                <p style={{ color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                    {language === "br" ? "Conectar" : "Connect"}
-                                    <BsMusicNoteBeamed size={15} style={{ marginLeft: 5 }} />
-                                </p>
-                            </AeroButton>
                             <AeroButton id="sub-nick">
                                 <form onSubmit={(e) => sendSubnick(e)}>
-                                    <input placeholder={language === "br" ? "Insira seu subnick aqui" : "Insert your subnick here"} type="text" id="myInput-subnick" onBlur={(e) => sendSubnick(e)}></input>
+                                    <input placeholder={language === "es" ? "Ingresá tu subnick acá" : "Insert your subnick here"} type="text" id="myInput-subnick" onBlur={(e) => sendSubnick(e)}></input>
                                 </form>
                             </AeroButton>
                         </div>

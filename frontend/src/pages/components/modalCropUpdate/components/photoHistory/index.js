@@ -9,7 +9,7 @@ import ModalBorder from "../../../modalBorder";
 import { verifyAvatarDefault, defaultPhotosArray } from "../../../modalBorder/verifyAvatarDefault.js";
 
 //images
-import Logo from "./assets/msn-logo.png";
+import Logo from "./assets/logo-placeholder.png";
 
 //configs
 import { socket } from "../../../../../configs/socket_export";
@@ -45,28 +45,28 @@ const PhotoHistory = (props) => {
             <div id="header">
                 <p>
                     <img src={Logo} alt="" />
-                    {language === "br" ? "Imagem para Exibição" : "Your Avatar"}
+                    {language === "es" ? "Imagen de perfil" : "Your Avatar"}
                 </p>
-                <p id="title-header">{language === "br" ? "Selecione uma Imagem para exibição" : "Select your avatar"}</p>
-                <small>{language === "br" ? "Escolha como você deseja aparecer no Messenger." : "Choose how you want to appear in Messenger."}</small>
+                <p id="title-header">{language === "es" ? "Seleccioná una imagen para mostrar" : "Select your avatar"}</p>
+                <small>{language === "es" ? "Elegí cómo querés aparecer en MiChat." : "Choose how you want to appear in MiChat."}</small>
             </div>
             <div id="mid">
                 <div id="left">
                     <div id="photos-galary">
                         <div>
-                            {photos && <h5>{language === "br" ? "Imagens custom" : "Custom Images"}</h5>}
+                            {photos && <h5>{language === "es" ? "Imágenes personalizadas" : "Custom Images"}</h5>}
                             <div>
                                 {photos &&
                                     photos.map((elem) => (
-                                        <button key={elem} className="button-photos-galary" onClick={() => setPhotoFocus(verifyAvatarDefault(elem))}>
+                                        <button key={elem} className="button-photos-galary" onClick={() => setPhotoFocus(elem)}>
                                             <img src={verifyAvatarDefault(elem)} alt=""></img>
                                         </button>
                                     ))}
                             </div>
 
-                            <h5>{language === "br" ? "Imagens comuns" : "Default Images"}</h5>
+                            <h5>{language === "es" ? "Imágenes predeterminadas" : "Default Images"}</h5>
                             {defaultPhotosArray.map((elem) => (
-                                <button key={elem} className="button-photos-galary" onClick={() => setPhotoFocus(verifyAvatarDefault(elem))}>
+                                <button key={elem} className="button-photos-galary" onClick={() => setPhotoFocus(elem)}>
                                     <img src={verifyAvatarDefault(elem)} alt=""></img>
                                 </button>
                             ))}
@@ -79,7 +79,7 @@ const PhotoHistory = (props) => {
                 </div>
             </div>
             <div id="bottom">
-                <button onClick={props.close}>{language === "br" ? "Fechar" : "Close"}</button>
+                <button onClick={props.close}>{language === "es" ? "Cerrar" : "Close"}</button>
                 <button onClick={sendAvatar} style={{ marginLeft: "30px", backgroundColor: "MediumSeaGreen" }}>
                     Salvar
                 </button>

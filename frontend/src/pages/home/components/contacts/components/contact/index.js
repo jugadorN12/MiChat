@@ -48,7 +48,7 @@ const Contact = (props) => {
         <Container>
             <AeroButton id="button" onCustomClick={(e) => handleCustomClick(props.socketid)} disabled={props.disabled}>
                 <img src={status} alt="" />
-                {props.disabled === true && <p>{language === "br" ? "(você)" : "(You)"}</p>}
+                {props.disabled === true && <p>{language === "es" ? "(vos)" : "(You)"}</p>}
                 {props.username && <p id="contact-username">{props.username}</p>}
                 {props.music.name ? (
                     props.music.name ? (

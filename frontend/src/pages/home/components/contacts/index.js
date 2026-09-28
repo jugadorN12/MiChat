@@ -41,7 +41,7 @@ const Contacts = () => {
                                     return <Contact username={elem.username} status={elem.status} subnick={elem.subnick} socketid={elem.socketid} key={elem.socketid} music={elem.music} disabled={false} />;
                                 }
                             })}
-                        <small style={{ color: "darkgray", height: "100%" }}>{language === "br" ? "* Usuários onlines aparecerão nesta lista." : "* Online users will appear in this list."}</small>
+                        <small style={{ color: "darkgray", height: "100%" }}>{language === "es" ? "* Los usuarios conectados aparecerán en esta lista." : "* Online users will appear in this list."}</small>
                     </div>
                 </details>
             </div>

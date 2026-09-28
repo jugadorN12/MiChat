@@ -1,4 +1,18 @@
-let socketsConnected = [];
+let socketsConnected = [
+    {
+        socketid: "bot-michat",
+        username: "MiChat Buddy",
+        status: "online",
+        subnick: "¡Todo liso che! xD",
+        chats: [],
+        avatar: "",
+        music: {
+            name: "",
+            author: "",
+            url: "",
+        },
+    }
+];
 
 const getIndex = (socketid) => {
     return socketsConnected.findIndex((elem) => elem.socketid === socketid);
@@ -141,8 +155,9 @@ const changeUsername = (socketid, username) => {
 
 const changeAvatar = (socketid, avatarlink) => {
     const indexuser = getIndex(socketid);
-
-    socketsConnected[indexuser].avatar = `${avatarlink}`;
+    if (socketsConnected[indexuser]) {
+        socketsConnected[indexuser].avatar = `${avatarlink}`;
+    }
 };
 
 const drawAttenAttention = (socketid, socketidperson) => {

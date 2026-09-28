@@ -1,4 +1,37 @@
 const { addUser, socketsConnected, removeUser, closeChat, changeVisibleChat, sendMessage, assignChat, drawAttenAttention, changeStatus, changeSubnick, changeAvatar, changeVisibleChatAttention, changeUsername, getPerson, socketsConnectedCounter } = require("../models");
+const Groq = require("groq-sdk");
+
+async function getGroqResponse(userMessage) {
+    try {
+        const apiKey = process.env.GROQ_API_KEY;
+        if (!apiKey) {
+            throw new Error("Clave API de Groq no encontrada en process.env");
+        }
+
+        // Instanciamos dentro para asegurar que tome el .env cargado
+        const groqClient = new Groq({ apiKey });
+
+        const completion = await groqClient.chat.completions.create({
+            messages: [
+                {
+                    role: "system",
+                    content: "Sos 'MiChat Buddy', un asistente virtual de un chat de los años 2000. Hablás en español de Argentina con jerga como 'xD', 'ola', 'che'. Respondé súper breve (máximo 2 oraciones)."
+                },
+                {
+                    role: "user",
+                    content: userMessage
+                }
+            ],
+            model: "groq/compound-mini",
+            max_tokens: 100, // Limite para no exceder la cuota gratuita
+        });
+
+        return completion.choices[0]?.message?.content || "No sé qué decirte che xD";
+    } catch (error) {
+        console.error("DEBUG - ERROR COMPLETO GROQ:", error);
+        return `¡Hola! Recibí tu mensaje: "${userMessage}". (Che, mi cerebro de IA tuvo un error: ${error.message}. ¡Igual acá sigo firme! xD)`;
+    }
+}
 
 module.exports = function (io) {
     io.on("connection", (socket) => {
@@ -10,11 +43,17 @@ module.exports = function (io) {
         io.emit("socketsConnectedCounter", socketsConnectedCounter()); // Quantidade de pessoas online...
 
         socket.on("socket connected notification", ({ avatar }) => {
-            io.emit("socket connected notification", { username: getPerson(socket.id).username, avatar }); // mandando o cliente que entoru para notificação...
+            const currentPerson = getPerson(socket.id);
+            io.emit("socket connected notification", { username: currentPerson ? currentPerson.username : socket.id, avatar }); // mandando o cliente que entoru para notificação...
             io.emit("socketsConnectedCounter", socketsConnectedCounter()); // Quantidade de pessoas online...
         });
 
         socket.on("change avatar", (avatarlink) => {
+            const user = getPerson(socket.id);
+            if (user && user.username) {
+                const db = require("../database");
+                db.get('users').find({ username: user.username }).assign({ avatar: avatarlink }).write();
+            }
             changeAvatar(socket.id, avatarlink);
             io.emit("socketsConnected", socketsConnected); // Mandando para os clientes que o socket entrou
         });
@@ -22,17 +61,43 @@ module.exports = function (io) {
         socket.on("send server message text", ({ message, socketidUser, socketidPerson }) => {
             const { updateChatsPerson, chatopen } = sendMessage(socketidUser, socketidPerson);
 
-            if (updateChatsPerson) io.to(socketidPerson).emit("refresh multi chats", updateChatsPerson); // retornando a lista de chats do usuario que clicou
+            if (updateChatsPerson && socketidPerson !== "bot-michat") io.to(socketidPerson).emit("refresh multi chats", updateChatsPerson); // retornando a lista de chats do usuario que clicou
 
-            io.to(socketidUser).emit("send client message text", { message, socketidUser, socketidPerson, usernamesend: getPerson(socket.id).username }); //mandando para o usuario que mandou a msg
-            io.to(socketidPerson).emit("send client message text", { message, socketidUser, socketidPerson, chatopen, usernamesend: getPerson(socket.id).username }); //mandando para o usuario que recebeu a msg
+            const senderUser = getPerson(socket.id);
+            const usernamesend = senderUser ? senderUser.username : socket.id;
+
+            io.to(socketidUser).emit("send client message text", { message, socketidUser, socketidPerson, usernamesend }); //mandando para o usuario que mandou a msg
+
+            if (socketidPerson !== "bot-michat") {
+                io.to(socketidPerson).emit("send client message text", { message, socketidUser, socketidPerson, chatopen, usernamesend }); //mandando para o usuario que recebeu a msg
+            } else {
+                // Respuesta con IA Groq (Llama 3)
+                (async () => {
+                    const aiResponse = await getGroqResponse(message);
+                    io.to(socketidUser).emit("send client message text", {
+                        message: aiResponse,
+                        socketidUser: "bot-michat",
+                        socketidPerson: socketidUser,
+                        chatopen: true,
+                        usernamesend: "MiChat Buddy"
+                    });
+                })();
+            }
         });
 
         socket.on("Draw AttenAttention", (socketidperson) => {
             const { updateChatsPerson, whosend, statusperson } = drawAttenAttention(socket.id, socketidperson);
-            io.to(socketidperson).emit("refresh multi chats", updateChatsPerson);
 
-            io.to(socketidperson).emit("Draw AttenAttention", { id: socket.id, whosend, isend: false, statusperson });
+            if (socketidperson !== "bot-michat") {
+                io.to(socketidperson).emit("refresh multi chats", updateChatsPerson);
+                io.to(socketidperson).emit("Draw AttenAttention", { id: socket.id, whosend, isend: false, statusperson });
+            } else {
+                // Bot responde al zumbido
+                setTimeout(() => {
+                    io.to(socket.id).emit("Draw AttenAttention", { id: "bot-michat", whosend: "MiChat Buddy", isend: false, statusperson: "online" });
+                }, 1500);
+            }
+
             io.to(socket.id).emit("Draw AttenAttention", { id: socketidperson, whosend, isend: true, statusperson });
         });
 
@@ -78,8 +143,11 @@ module.exports = function (io) {
 
             if (updateChatsPerson) io.to(socketidPerson).emit("refresh multi chats", updateChatsPerson);
 
-            io.to(socket.id).emit("send client message text", { message: "", socketidUser: socket.id, socketidPerson, usernamesend: getPerson(socket.id).username }); //mandando para o usuario que mandou a msg
-            io.to(socketidPerson).emit("send client message text", { message: "", socketidUser: socket.id, socketidPerson, chatopen, usernamesend: getPerson(socket.id).username }); //mandando para o usuario que recebeu a msg
+            const senderUser = getPerson(socket.id);
+            const usernamesend = senderUser ? senderUser.username : socket.id;
+
+            io.to(socket.id).emit("send client message text", { message: "", socketidUser: socket.id, socketidPerson, usernamesend }); //mandando para o usuario que mandou a msg
+            io.to(socketidPerson).emit("send client message text", { message: "", socketidUser: socket.id, socketidPerson, chatopen, usernamesend }); //mandando para o usuario que recebeu a msg
 
             io.to(socketidPerson).emit("send audio", { audioURL, socketidPerson, socketidUser: socket.id }); // Mandando para os clientes que o socket entrou
             io.to(socket.id).emit("send audio", { audioURL, socketidPerson, socketidUser: socket.id }); // Mandando para os clientes que o socket entrou
@@ -91,15 +159,15 @@ module.exports = function (io) {
             const { updateChatsPerson, chatopen } = sendMessage(socket.id, socketidPerson);
             if (updateChatsPerson) io.to(socketidPerson).emit("refresh multi chats", updateChatsPerson);
 
-            // io.to(socket.id).emit("send client message text", { message: " ", socketidUser: socket.id, socketidPerson, usernamesend: getPerson(socket.id).username }); //mandando para o usuario que mandou a msg
-            // io.to(socketidPerson).emit("send client message text", { message: " ", socketidUser: socket.id, socketidPerson, chatopen, usernamesend: getPerson(socket.id).username }); //mandando para o usuario que recebeu a msg
+            const senderUser = getPerson(socket.id);
+            const usernamesend = senderUser ? senderUser.username : socket.id;
 
             setTimeout(() => {
                 const personChats = changeVisibleChatAttention({ socketiduser: socket.id, socketidperson: socketidPerson }); // troca o visible de true para false e ao contrario também, e pega os chats novamente
                 io.to(socketidPerson).emit("refresh multi chats", personChats); //manda os chats com o atributo do visible atualizado
 
-                io.to(socketidPerson).emit("send wink", { wink, socketidUser: socket.id, socketidPerson, usernamesend: getPerson(socket.id).username }); //envia wink para a pessoa q vai receber
-                io.to(socket.id).emit("send wink", { wink, socketidUser: socketidPerson, socketidPerson: socket.id, usernamesend: getPerson(socket.id).username }); //Envia o emit para a pessoa que cliccou para enviar, os valores estão trocados para que quando ele receba reproduza o wink
+                io.to(socketidPerson).emit("send wink", { wink, socketidUser: socket.id, socketidPerson, usernamesend }); //envia wink para a pessoa q vai receber
+                io.to(socket.id).emit("send wink", { wink, socketidUser: socketidPerson, socketidPerson: socket.id, usernamesend }); //Envia o emit para a pessoa que cliccou para enviar, os valores estão trocados para que quando ele receba reproduza o wink
             }, 1000);
         });
 

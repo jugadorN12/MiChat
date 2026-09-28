@@ -1,8 +1,6 @@
 const config = () => {
     return {
-        ipServer: "msn-js.herokuapp.com",
-        // ipServer: "msn-js.herokuapp.com",
-        // ipServer: "http://localhost:80",
+        ipServer: process.env.REACT_APP_BACKEND_URL || "http://localhost:3001",
     };
 };
 

@@ -52,7 +52,7 @@ const FancyWinks = React.forwardRef((props, ref) => {
 
             {/* winks */}
             <button ref={buttonStop} id="stop-video-winks" onClick={handleStopVideo}>
-                {language === "br" ? "Parar" : "Stop"}
+                {language === "es" ? "Parar" : "Stop"}
             </button>
             {winks.map((elem, index) => {
                 return (
